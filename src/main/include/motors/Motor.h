@@ -6,19 +6,20 @@
 #include "rev/CanSparkMax.h"
 #include <memory>
 
+//Motor class to handle hardware specific details
 class Motor {
      public:
           Motor(MotorTypes type, uint id, bool isMotorBrushless);
 
-          uint getID();
+          uint getID(); //returns CAN id of the motor
 
-          bool isInReverse();
+          bool isInReverse(); //returns member variable isReversed
 
-          void setIsReversed(bool reversed);
+          void setIsReversed(bool reversed); //sets member variable isReversed
 
-          void setMotorPower(double power);
+          void setMotorPower(double power); //sets member variable power and sets the hardware-specific motor's power
 
-          double getMotorPower();
+          double getMotorPower(); //returns member variable power
 
 
 
