@@ -3,7 +3,7 @@
 
 #include "MotorTypes.h"
 
-#include "rev/CanSparkMax.h"
+#include <rev/CanSparkMax.h>
 #include <memory>
 
 //Motor class to handle hardware specific details
