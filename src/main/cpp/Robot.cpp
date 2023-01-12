@@ -3,16 +3,16 @@
 #include <iostream>
 
 //CAN ids
-#define FL_MOTOR_ID 0
-#define FR_MOTOR_ID 1
-#define BL_MOTOR_ID 2
-#define BR_MOTOR_ID 3
+#define FL_MOTOR_ID 2
+#define FR_MOTOR_ID 0
+#define BL_MOTOR_ID 3
+#define BR_MOTOR_ID 1
 
 //Motor Hardware Specifications
-#define FL_MOTOR_TYPE REV_SPARK_MAX
-#define FR_MOTOR_TYPE REV_SPARK_MAX
-#define BL_MOTOR_TYPE REV_SPARK_MAX
-#define BR_MOTOR_TYPE REV_SPARK_MAX
+#define FL_MOTOR_TYPE TALON_FX
+#define FR_MOTOR_TYPE TALON_FX
+#define BL_MOTOR_TYPE TALON_FX
+#define BR_MOTOR_TYPE TALON_FX
 
 #define FL_MOTOR_BRUSHLESS true
 #define FR_MOTOR_BRUSHLESS true

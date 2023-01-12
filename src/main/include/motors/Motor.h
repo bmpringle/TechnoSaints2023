@@ -4,6 +4,8 @@
 #include "MotorTypes.h"
 
 #include <rev/CanSparkMax.h>
+#include <ctre/phoenix/motorcontrol/can/TalonFX.h>
+
 #include <memory>
 
 //Motor class to handle hardware specific details
@@ -31,6 +33,7 @@ class Motor {
           double power = 0.0; 
           
           std::unique_ptr<rev::CANSparkMax> internalMotorSparkMax; 
+          std::unique_ptr<ctre::phoenix::motorcontrol::can::TalonFX> internalMotorTalonFX; 
 };
 
 #endif

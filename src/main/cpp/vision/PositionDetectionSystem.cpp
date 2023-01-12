@@ -2,7 +2,35 @@
 
 #include <iostream>
 
-PositionDetectionSystem::PositionDetectionSystem() : field(Field()), cameras({}) {
+#include <frc/apriltag/AprilTag.h>
+#include <frc/apriltag/AprilTagDetection.h>
+
+#include <frc/apriltag/AprilTagFieldLayout.h>
+#include <frc/apriltag/AprilTagFields.h>
+#include <frc/apriltag/AprilTagPoseEstimate.h>
+#include <frc/apriltag/AprilTagPoseEstimator.h>
+
+//unfixable warnings in opencv, so use these preprocesser directives to suppress the warnings
+#if defined(__clang__)
+     #pragma GCC diagnostic push
+     #pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+     #include "opencv2/videoio.hpp"
+     #include <opencv2/imgproc.hpp>
+     #pragma GCC diagnostic pop
+#elif defined(__GNUC__) || defined(__GNUG__)
+     #pragma GCC diagnostic push
+     #pragma GCC diagnostic ignored "-Wdeprecated-enum-enum-conversion"
+     #include "opencv2/videoio.hpp"
+     #include <opencv2/imgproc.hpp>
+     #pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+     #pragma warning(push, 0)
+     #include "opencv2/videoio.hpp"
+     #include <opencv2/imgproc.hpp>
+     #pragma warning(pop)
+#endif
+
+PositionDetectionSystem::PositionDetectionSystem() : field(Field()), cameras({}), detector(frc::AprilTagDetector()), outputStream(cs::CvSource("video", cs::VideoMode::PixelFormat::kMJPEG, 640, 480, 30)), mjpegServer2(cs::MjpegServer("server-video", 1182)) {
      auto cameraInfo = cs::UsbCamera::EnumerateUsbCameras();
      
      for(cs::UsbCameraInfo& usbInfo : cameraInfo) {
@@ -12,8 +40,16 @@ PositionDetectionSystem::PositionDetectionSystem() : field(Field()), cameras({})
           std::cout << "\tdevID: " << usbInfo.dev << std::endl;
 
           cameras.push_back(cs::UsbCamera(usbInfo.name, usbInfo.dev));
+
+          cs::CvSink cameraSink("usb camera sink: " + cameras.at(cameras.size() - 1).GetName());
+          cameraSink.SetSource(cameras.at(cameras.size() - 1));
+          cvSinks.push_back(cameraSink);
      }
-     
+
+     detector.AddFamily("tag16h5");
+
+     mjpegServer2.SetSource(outputStream);
+
      FieldElement chargeStationBlue;
      chargeStationBlue.elementIdentifier = "chargeStationBlue";
      //distance from grid tape line to center of charge station - charge station width / 2 + distance from grid tape line to edge of field
@@ -180,5 +216,20 @@ PositionDetectionSystem::~PositionDetectionSystem() {
           for(FieldElement* subElement : element.subElements) {
                freeAllSubElements(subElement);
           }
+     }
+}
+
+void PositionDetectionSystem::update() {
+     for(cs::CvSink& sink : cvSinks) {
+          cv::Mat img;
+          uint64_t status = sink.GrabFrame(img);
+          frc::AprilTagDetector::Results aprilTags = detector.Detect(img.cols, img.rows, img.data);
+          for(const frc::AprilTagDetection* aprilTag : aprilTags) {
+               auto center = aprilTag->GetCenter();
+               cv::rectangle(img, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
+               cv::circle(img, cv::Point(center.x, center.y), 5, cv::Scalar(255, 0, 0), -1);
+               cv::putText(img, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y + 10), cv::FONT_HERSHEY_SIMPLEX, 10, cv::Scalar(0, 0, 255));
+          }
+          outputStream.PutFrame(img); //todo, add vectors for these so that each video stream has its own output 
      }
 }

@@ -7,6 +7,9 @@ Motor::Motor(MotorTypes type, uint id, bool isMotorBrushless) : motorType(type),
           case REV_SPARK_MAX:
                internalMotorSparkMax = std::make_unique<rev::CANSparkMax>(id, (isMotorBrushless) ? rev::CANSparkMaxLowLevel::MotorType::kBrushless : rev::CANSparkMaxLowLevel::MotorType::kBrushed);
                break;
+          case TALON_FX:
+               internalMotorTalonFX = std::make_unique<ctre::phoenix::motorcontrol::can::TalonFX>(id);
+               break;
           default:
                std::cout << "Motor type for motor with CAN id " << id << " has not been properly implemented in the Motor class" << std::endl;
                break;
@@ -23,6 +26,16 @@ bool Motor::isInReverse() {
 
 void Motor::setIsReversed(bool reversed) {
      isReversed = reversed;
+     switch(motorType) {
+          case REV_SPARK_MAX:
+               internalMotorSparkMax->SetInverted(reversed);
+               break;
+          case TALON_FX:
+               internalMotorTalonFX->SetInverted(reversed);
+               break;
+          default:
+               break;
+     }
 }
 
 void Motor::setMotorPower(double power) {
@@ -30,7 +43,10 @@ void Motor::setMotorPower(double power) {
 
      switch(motorType) {
           case REV_SPARK_MAX:
-               internalMotorSparkMax->Set(power * ((isReversed) ? -1 : 1));
+               internalMotorSparkMax->Set(power);
+               break;
+          case TALON_FX:
+               internalMotorTalonFX->Set(ctre::phoenix::motorcontrol::ControlMode::PercentOutput, power);
                break;
           default:
                std::cout << "Motor type for motor with CAN id " << canID << " has not been properly implemented in the Motor class" << std::endl;

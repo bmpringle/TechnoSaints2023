@@ -5,6 +5,7 @@
 #include <frc/XboxController.h>
 
 #include "motors/Motor.h"
+#include "vision/PositionDetectionSystem.h"
 
 class Robot : public frc::TimedRobot {
      public:
@@ -31,6 +32,8 @@ class Robot : public frc::TimedRobot {
           frc::XboxController controller;
 
           double maxTurnSpeed = 0.5;
+
+          PositionDetectionSystem positionDetector;
 };
 
 #endif

@@ -15,7 +15,7 @@
      "**/*~": true
      },
      "C_Cpp.default.configurationProvider": "vscode-wpilib",
-     "C_Cpp.default.includePath": [
+     /*"C_Cpp.default.includePath": [
           "./2023.1.1_FRC_HEADERS/apriltag-cpp-2023.1.1-headers", 
           "./2023.1.1_FRC_HEADERS/cameraserver-cpp-2023.1.1-headers", 
           "./2023.1.1_FRC_HEADERS/chipobject-2023.3.0-headers",
@@ -32,7 +32,7 @@
           "./2023.1.1_FRC_HEADERS/wpimath-cpp-2023.1.1-headers",
           "./2023.1.1_FRC_HEADERS/wpinet-cpp-2023.1.1-headers",
           "./2023.1.1_FRC_HEADERS/wpiutil-cpp-2023.1.1-headers"
-     ],
+     ],*/
      "editor.tabSize" : 5,
      "editor.detectIndentation": false,
      "files.associations": {
