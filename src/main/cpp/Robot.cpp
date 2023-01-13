@@ -21,8 +21,9 @@
 
 //initalize member variables in the constructor and not in RobotInit because otherwise the compiler will complain since there's no default constructor for Motor and frc::XboxController
 Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)), frontRight(Motor(FR_MOTOR_TYPE, FR_MOTOR_ID, FR_MOTOR_BRUSHLESS)), 
-                    backLeft(Motor(BL_MOTOR_TYPE, BL_MOTOR_ID, BL_MOTOR_BRUSHLESS)), backRight(Motor(BR_MOTOR_TYPE, BR_MOTOR_ID, BR_MOTOR_BRUSHLESS)), controller(frc::XboxController(0)) {
-
+                    backLeft(Motor(BL_MOTOR_TYPE, BL_MOTOR_ID, BL_MOTOR_BRUSHLESS)), backRight(Motor(BR_MOTOR_TYPE, BR_MOTOR_ID, BR_MOTOR_BRUSHLESS)), controller(LogitechController(0)) {
+     frontRight.setIsReversed(true);
+     backRight.setIsReversed(true);
 }
 
 void Robot::RobotInit() {
@@ -38,19 +39,22 @@ void Robot::TeleopInit() {
 }
 
 void Robot::TeleopPeriodic() {
-
-     if(controller.GetLeftTriggerAxis()) { //turn left if left trigger is being used
+     std::cout << "lta: " << controller.GetLeftTriggerAxis() << std::endl;
+     std::cout << "rta: " << controller.GetRightTriggerAxis() << std::endl;
+     std::cout << "lefty: " << controller.GetLeftY() << std::endl;
+     std::cout << ((controller.GetRightTriggerAxis() > 0) == (controller.GetLeftTriggerAxis() > 0)) << std::endl;
+     if(controller.GetLeftTriggerAxis() > 0) { //turn left if left trigger is being used
           frontLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
           frontRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
           backLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
           backRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
      }
 
-     if(controller.GetRightTriggerAxis()) { //turn right if right trigger is being used
-          frontLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          frontRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          backLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          backRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
+     if(controller.GetRightTriggerAxis() > 0) { //turn right if right trigger is being used
+          frontLeft.setMotorPower(controller.GetRightTriggerAxis() * maxTurnSpeed);
+          frontRight.setMotorPower(-controller.GetRightTriggerAxis() * maxTurnSpeed);
+          backLeft.setMotorPower(controller.GetRightTriggerAxis() * maxTurnSpeed);
+          backRight.setMotorPower(-controller.GetRightTriggerAxis() * maxTurnSpeed);
      }
 
      if((controller.GetRightTriggerAxis() > 0) == (controller.GetLeftTriggerAxis() > 0)) { //if either both or neither triggers are being used, set all power to 0
@@ -63,7 +67,7 @@ void Robot::TeleopPeriodic() {
      //combine the turn and straight movement powers to allow for both to happen at the same time (positive straight movement)
      if(controller.GetLeftY() > 0.05) {  //0.05 is a dead zone, used both in order to both prevent accidental movement and to keep a left stick that reports a resting value that is slightly greater than 0 from constantly moving the robot forwards
           double powerDiff = std::min(1.0 - frontLeft.getMotorPower(), std::min(1.0 - frontRight.getMotorPower(), std::min(1.0 - backLeft.getMotorPower(), std::min(1.0 - backRight.getMotorPower(), controller.GetLeftY()))));
-          
+          std::cout << powerDiff << std::endl;
           frontLeft.setMotorPower(frontLeft.getMotorPower() + powerDiff);
           frontRight.setMotorPower(frontRight.getMotorPower() + powerDiff);
           backLeft.setMotorPower(backLeft.getMotorPower() + powerDiff);
@@ -73,12 +77,12 @@ void Robot::TeleopPeriodic() {
      //combine the turn and straight movement powers to allow for both to happen at the same time (negative straight movement)
      if(controller.GetLeftY() < -0.05) { //0.05 is a dead zone, used both in order to both prevent accidental movement and to keep a left stick that reports a resting value that is slightly less than 0 from constantly moving the robot backwards
           double powerDiff = -std::min(1.0 + frontLeft.getMotorPower(), std::min(1.0 + frontRight.getMotorPower(), std::min(1.0 + backLeft.getMotorPower(), std::min(1.0 + backRight.getMotorPower(), -controller.GetLeftY()))));
-          
+          std::cout << powerDiff << std::endl;
           frontLeft.setMotorPower(frontLeft.getMotorPower() + powerDiff);
           frontRight.setMotorPower(frontRight.getMotorPower() + powerDiff);
           backLeft.setMotorPower(backLeft.getMotorPower() + powerDiff);
           backRight.setMotorPower(backRight.getMotorPower() + powerDiff);
-     } 
+     }
 }
 
 void Robot::AutonomousInit() {

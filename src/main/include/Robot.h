@@ -2,7 +2,7 @@
 #define ROBOT_H
 
 #include <frc/TimedRobot.h>
-#include <frc/XboxController.h>
+#include "io/LogitechController.h"
 
 #include "motors/Motor.h"
 #include "vision/PositionDetectionSystem.h"
@@ -29,9 +29,9 @@ class Robot : public frc::TimedRobot {
           Motor backLeft;
           Motor backRight;
 
-          frc::XboxController controller;
+          LogitechController controller;
 
-          double maxTurnSpeed = 0.5;
+          double maxTurnSpeed = 0.3;
 
           PositionDetectionSystem positionDetector;
 };
