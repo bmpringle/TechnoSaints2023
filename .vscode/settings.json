@@ -111,6 +111,7 @@
           "qr": "cpp",
           "forward_list": "cpp",
           "scoped_allocator": "cpp",
-          "shared_mutex": "cpp"
+          "shared_mutex": "cpp",
+          "__config": "cpp"
      }
 }

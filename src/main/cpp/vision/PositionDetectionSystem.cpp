@@ -9,6 +9,11 @@
 #include <frc/apriltag/AprilTagFields.h>
 #include <frc/apriltag/AprilTagPoseEstimate.h>
 #include <frc/apriltag/AprilTagPoseEstimator.h>
+#include <networktables/NetworkTableInstance.h>
+
+#include "debug/DebugTimer.h"
+
+#include <thread>
 
 //unfixable warnings in opencv, so use these preprocesser directives to suppress the warnings
 #if defined(__clang__)
@@ -30,25 +35,63 @@
      #pragma warning(pop)
 #endif
 
-PositionDetectionSystem::PositionDetectionSystem() : field(Field()), cameras({}), detector(frc::AprilTagDetector()), outputStream(cs::CvSource("video", cs::VideoMode::PixelFormat::kMJPEG, 640, 480, 30)), mjpegServer2(cs::MjpegServer("server-video", 1182)) {
-     auto cameraInfo = cs::UsbCamera::EnumerateUsbCameras();
-     
-     for(cs::UsbCameraInfo& usbInfo : cameraInfo) {
-          std::cout << "USB CAMERA DETECTED" << std::endl;
-          std::cout << "-------------------" << std::endl;
-          std::cout << "\tname: " << usbInfo.name << std::endl;
-          std::cout << "\tdevID: " << usbInfo.dev << std::endl;
 
-          cameras.push_back(cs::UsbCamera(usbInfo.name, usbInfo.dev));
+frc::AprilTagPoseEstimator::Config getCameraConfig(std::string cameraName) {
+     frc::AprilTagPoseEstimator::Config cfg;
 
-          cs::CvSink cameraSink("usb camera sink: " + cameras.at(cameras.size() - 1).GetName());
-          cameraSink.SetSource(cameras.at(cameras.size() - 1));
-          cvSinks.push_back(cameraSink);
+     if(cameraName == "HD Pro Webcam C920") {
+          //cfg.
+          return cfg;
      }
+     throw std::runtime_error(cameraName + std::string(" is an unknown camera type"));
+}
 
-     detector.AddFamily("tag16h5");
+PositionDetectionSystem::PositionDetectionSystem(int cameraCount) : field(Field()), cameraCount(cameraCount) {
+     std::thread([this, cameraCount]() {
+          frc::AprilTagDetector detector = frc::AprilTagDetector();
 
-     mjpegServer2.SetSource(outputStream);
+          detector.AddFamily("tag16h5", 0);
+
+          std::vector<cs::CvSink> sinks;
+          std::vector<cs::CvSource> sources;
+          std::vector<frc::AprilTagPoseEstimator> estimators;
+
+          for(int i = 0; i < cameraCount; ++i) {
+               auto camera = frc::CameraServer::StartAutomaticCapture();
+               camera.SetResolution(320, 240);
+
+               std::cout << "Connected to camera " << camera.GetInfo().name << " with ID " << i << std::endl;
+
+               sinks.push_back(frc::CameraServer::GetVideo());
+               sources.push_back(frc::CameraServer::PutVideo(std::string("Annotated Output - USB Camera ") + std::to_string(i), camera.GetVideoMode().width, camera.GetVideoMode().height));         
+               estimators.push_back(frc::AprilTagPoseEstimator(getCameraConfig(camera.GetInfo().name)));
+          }
+
+          cv::Mat currentImage;
+          cv::Mat greyscaleImage;
+
+          while(true) {
+               for(int i = 0; i < cameraCount; ++i) {
+                    if(sinks[i].GrabFrame(currentImage) == 0) { //in BGR format
+                         sources[i].NotifyError(sinks[i].GetError());
+                         continue;
+                    }
+
+                    cv::cvtColor(currentImage, greyscaleImage, cv::COLOR_BGR2GRAY);
+
+                    frc::AprilTagDetector::Results aprilTags = detector.Detect(greyscaleImage.size().width, greyscaleImage.size().height, greyscaleImage.data);
+
+                    for(const frc::AprilTagDetection* aprilTag : aprilTags) {
+                         auto center = aprilTag->GetCenter();
+                         cv::rectangle(currentImage, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
+                         cv::putText(currentImage, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
+                    }
+
+                    sources[i].PutFrame(currentImage);
+               }
+               sleep(0.01);
+          }
+     }).detach();
 
      FieldElement chargeStationBlue;
      chargeStationBlue.elementIdentifier = "chargeStationBlue";
@@ -220,16 +263,5 @@ PositionDetectionSystem::~PositionDetectionSystem() {
 }
 
 void PositionDetectionSystem::update() {
-     for(cs::CvSink& sink : cvSinks) {
-          cv::Mat img;
-          uint64_t status = sink.GrabFrame(img);
-          frc::AprilTagDetector::Results aprilTags = detector.Detect(img.cols, img.rows, img.data);
-          for(const frc::AprilTagDetection* aprilTag : aprilTags) {
-               auto center = aprilTag->GetCenter();
-               cv::rectangle(img, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
-               cv::circle(img, cv::Point(center.x, center.y), 5, cv::Scalar(255, 0, 0), -1);
-               cv::putText(img, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y + 10), cv::FONT_HERSHEY_SIMPLEX, 10, cv::Scalar(0, 0, 255));
-          }
-          outputStream.PutFrame(img); //todo, add vectors for these so that each video stream has its own output 
-     }
+     
 }

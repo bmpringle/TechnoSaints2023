@@ -10,21 +10,20 @@
 
 #include <frc/apriltag/AprilTagDetector.h>
 
+#include <thread>
+#include <mutex>
+#include <map>
+
 class PositionDetectionSystem {
      public:
-          PositionDetectionSystem();
+          PositionDetectionSystem(int cameraCount = 1);
           ~PositionDetectionSystem();
 
           void update();
      private:
           Field field;
-          std::vector<cs::UsbCamera> cameras;
-          std::vector<cs::CvSink> cvSinks;
-          
-          frc::AprilTagDetector detector;
 
-          cs::CvSource outputStream;
-          cs::MjpegServer mjpegServer2;
+          int cameraCount;
 };
 
 #endif

@@ -7,6 +7,10 @@
 #include "motors/Motor.h"
 #include "vision/PositionDetectionSystem.h"
 
+struct MotorConfigs {
+     
+};
+
 class Robot : public frc::TimedRobot {
      public:
           Robot();
@@ -24,6 +28,8 @@ class Robot : public frc::TimedRobot {
           void TeleopExit() override;
 
      private:
+          void teleopMovementPeriodic();
+
           Motor frontLeft;
           Motor frontRight;
           Motor backLeft;
@@ -32,6 +38,10 @@ class Robot : public frc::TimedRobot {
           LogitechController controller;
 
           double maxTurnSpeed = 0.3;
+
+          double maxAcceleratePerSecond = 1.0;
+          
+          double teleopMovementPeriodicCallRate = 1.0 / 60.0;
 
           PositionDetectionSystem positionDetector;
 };

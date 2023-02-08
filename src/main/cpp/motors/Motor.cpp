@@ -11,8 +11,7 @@ Motor::Motor(MotorTypes type, uint id, bool isMotorBrushless) : motorType(type),
                internalMotorTalonFX = std::make_unique<ctre::phoenix::motorcontrol::can::TalonFX>(id);
                break;
           default:
-               std::cout << "Motor type for motor with CAN id " << id << " has not been properly implemented in the Motor class" << std::endl;
-               break;
+               throw std::runtime_error(std::string("Motor type for motor with CAN id ") + std::to_string(id) + std::string(" has not been properly implemented in the Motor class"));
      }
 }
 
