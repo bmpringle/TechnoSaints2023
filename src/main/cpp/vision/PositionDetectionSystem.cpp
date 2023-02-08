@@ -40,59 +40,17 @@ frc::AprilTagPoseEstimator::Config getCameraConfig(std::string cameraName) {
      frc::AprilTagPoseEstimator::Config cfg;
 
      if(cameraName == "HD Pro Webcam C920") {
-          //cfg.
+          cfg.tagSize = 0.2159_m;
+          cfg.cx = 0;
+          cfg.cy = 0;
+          cfg.fx = 0;
+          cfg.fy = 0;
           return cfg;
      }
      throw std::runtime_error(cameraName + std::string(" is an unknown camera type"));
 }
 
-PositionDetectionSystem::PositionDetectionSystem(int cameraCount) : field(Field()), cameraCount(cameraCount) {
-     std::thread([this, cameraCount]() {
-          frc::AprilTagDetector detector = frc::AprilTagDetector();
-
-          detector.AddFamily("tag16h5", 0);
-
-          std::vector<cs::CvSink> sinks;
-          std::vector<cs::CvSource> sources;
-          std::vector<frc::AprilTagPoseEstimator> estimators;
-
-          for(int i = 0; i < cameraCount; ++i) {
-               auto camera = frc::CameraServer::StartAutomaticCapture();
-               camera.SetResolution(320, 240);
-
-               std::cout << "Connected to camera " << camera.GetInfo().name << " with ID " << i << std::endl;
-
-               sinks.push_back(frc::CameraServer::GetVideo());
-               sources.push_back(frc::CameraServer::PutVideo(std::string("Annotated Output - USB Camera ") + std::to_string(i), camera.GetVideoMode().width, camera.GetVideoMode().height));         
-               estimators.push_back(frc::AprilTagPoseEstimator(getCameraConfig(camera.GetInfo().name)));
-          }
-
-          cv::Mat currentImage;
-          cv::Mat greyscaleImage;
-
-          while(true) {
-               for(int i = 0; i < cameraCount; ++i) {
-                    if(sinks[i].GrabFrame(currentImage) == 0) { //in BGR format
-                         sources[i].NotifyError(sinks[i].GetError());
-                         continue;
-                    }
-
-                    cv::cvtColor(currentImage, greyscaleImage, cv::COLOR_BGR2GRAY);
-
-                    frc::AprilTagDetector::Results aprilTags = detector.Detect(greyscaleImage.size().width, greyscaleImage.size().height, greyscaleImage.data);
-
-                    for(const frc::AprilTagDetection* aprilTag : aprilTags) {
-                         auto center = aprilTag->GetCenter();
-                         cv::rectangle(currentImage, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
-                         cv::putText(currentImage, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
-                    }
-
-                    sources[i].PutFrame(currentImage);
-               }
-               sleep(0.01);
-          }
-     }).detach();
-
+void createField(Field& field) {
      FieldElement chargeStationBlue;
      chargeStationBlue.elementIdentifier = "chargeStationBlue";
      //distance from grid tape line to center of charge station - charge station width / 2 + distance from grid tape line to edge of field
@@ -245,6 +203,56 @@ PositionDetectionSystem::PositionDetectionSystem(int cameraCount) : field(Field(
      aprilTags.push_back(aprilTag);
 
      field.fieldMarkers = aprilTags;
+}
+
+void cameraThreadFunction(int cameraCount) {
+     frc::AprilTagDetector detector = frc::AprilTagDetector();
+
+     detector.AddFamily("tag16h5", 0);
+
+     std::vector<cs::CvSink> sinks;
+     std::vector<cs::CvSource> sources;
+     std::vector<frc::AprilTagPoseEstimator> estimators;
+
+     for(int i = 0; i < cameraCount; ++i) {
+          auto camera = frc::CameraServer::StartAutomaticCapture();
+          camera.SetResolution(320, 240);
+
+          std::cout << "Connected to camera " << camera.GetInfo().name << " with ID " << i << std::endl;
+
+          sinks.push_back(frc::CameraServer::GetVideo());
+          sources.push_back(frc::CameraServer::PutVideo(std::string("Annotated Output - USB Camera ") + std::to_string(i), camera.GetVideoMode().width, camera.GetVideoMode().height));         
+          estimators.push_back(frc::AprilTagPoseEstimator(getCameraConfig(camera.GetInfo().name)));
+     }
+
+     cv::Mat currentImage;
+     cv::Mat greyscaleImage;
+
+     while(true) {
+          for(int i = 0; i < cameraCount; ++i) {
+               if(sinks[i].GrabFrame(currentImage) == 0) { //in BGR format
+                    sources[i].NotifyError(sinks[i].GetError());
+                    continue;
+               }
+
+               cv::cvtColor(currentImage, greyscaleImage, cv::COLOR_BGR2GRAY);
+
+               frc::AprilTagDetector::Results aprilTags = detector.Detect(greyscaleImage.size().width, greyscaleImage.size().height, greyscaleImage.data);
+
+               for(const frc::AprilTagDetection* aprilTag : aprilTags) {
+                    auto center = aprilTag->GetCenter();
+                    cv::rectangle(currentImage, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
+                    cv::putText(currentImage, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
+               }
+
+               sources[i].PutFrame(currentImage);
+          }
+          sleep(0.01);
+     }
+}
+
+PositionDetectionSystem::PositionDetectionSystem(int cameraCount) : field(Field()), cameraCount(cameraCount), cameraFunctionThread(std::thread(cameraThreadFunction, cameraCount)) {
+     createField(field);
 }
 
 void freeAllSubElements(FieldElement* element) {

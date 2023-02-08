@@ -24,6 +24,8 @@ class PositionDetectionSystem {
           Field field;
 
           int cameraCount;
+
+          std::thread cameraFunctionThread;
 };
 
 #endif
