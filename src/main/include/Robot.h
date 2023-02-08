@@ -7,10 +7,6 @@
 #include "motors/Motor.h"
 #include "vision/PositionDetectionSystem.h"
 
-struct MotorConfigs {
-     
-};
-
 class Robot : public frc::TimedRobot {
      public:
           Robot();

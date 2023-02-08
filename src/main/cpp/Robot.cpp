@@ -21,12 +21,19 @@
 #define BL_MOTOR_BRUSHLESS true
 #define BR_MOTOR_BRUSHLESS true
 
+#define TEST_RIG true
+
 //initalize member variables in the constructor and not in RobotInit because otherwise the compiler will complain since there's no default constructor for Motor and frc::XboxController
 Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)), frontRight(Motor(FR_MOTOR_TYPE, FR_MOTOR_ID, FR_MOTOR_BRUSHLESS)), 
                     backLeft(Motor(BL_MOTOR_TYPE, BL_MOTOR_ID, BL_MOTOR_BRUSHLESS)), backRight(Motor(BR_MOTOR_TYPE, BR_MOTOR_ID, BR_MOTOR_BRUSHLESS)), controller(LogitechController(0)), positionDetector(PositionDetectionSystem()) {
-     frontRight.setIsReversed(true);
-     backRight.setIsReversed(true);
      
+     if(TEST_RIG) {
+          frontRight.setIsReversed(true);
+          backRight.setIsReversed(true);
+     }else {
+          frontLeft.setIsReversed(true);
+          backLeft.setIsReversed(true);
+     }  
 }
 
 void Robot::RobotInit() {
