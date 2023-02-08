@@ -1,0 +1,53 @@
+Check robot location using the AprilTags. 
+  Case 1: Left tag (as seen by the driver)
+    Place pre-loaded game piece on the corresponding scoring position. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it.  
+    Move to center of field and pick up a second game piece. 
+      Move to the center of the field, where there are more game pieces placed down. 
+      Use the AprilTags to locate the position of the leftmost game piece, and move to it. 
+      Pick up that game piece. 
+    Move back to scoring area and score the second game piece. 
+      Move back to the leftmost scoring area. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it. 
+    Move to the left side of the charge station and balance it. 
+      Using the AprilTags for positioning, move right until directly in front of the charge station (the left side, specifically). 
+      Move forward slowly until balanced on the station. 
+        Potentially use the angle of the camera to the ground to detect if balanced or not.
+        Maybe also use a second, downward facing camera to see if balanced (lights turn on when balanced). 
+      If unbalanced, adjust position until it is balanced again. 
+  Case 2: Center tag (as seen by the driver)
+    Place pre-loaded game piece on the corresponding scoring position. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it.  
+    Move to center of field and pick up a second game piece. 
+      Move to the center of the field, where there are more game pieces placed down. 
+      Use the AprilTags to locate the position of one of the center game pieces (either left center or right center), and move to it. 
+      Pick up that game piece. 
+    Move back to scoring area and score the second game piece. 
+      Move back to the center scoring area. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it. 
+    Move to the center of the charge station and balance it. 
+      Using the AprilTags for positioning, adjust until in front of center of charge station. 
+      Move forward slowly until balanced on the station. 
+        Potentially use the angle of the camera to the ground to detect if balanced or not.
+        Maybe also use a second, downward facing camera to see if balanced (lights turn on when balanced). 
+  Case 3: Right tag (as seen by the driver)
+    Place pre-loaded game piece on the corresponding scoring position. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it.  
+    Move to center of field and pick up a second game piece. 
+      Move to the center of the field, where there are more game pieces placed down. 
+      Use the AprilTags to locate the position of the rightmost game piece, and move to it. 
+      Pick up that game piece. 
+    Move back to scoring area and score the second game piece. 
+      Move back to the rightmost scoring area. 
+      Using the AprilTags to check position, move to the appropriate scoring position. 
+      Raise the arm, maneuver the arm to be over the correct scoring position (again, using the AprilTags for position), and set down the game piece to score it. 
+    Move to the left side of the charge station and balance it. 
+      Using the AprilTags for positioning, move left until directly in front of the charge station (the right side, specifically). 
+      Move forward slowly until balanced on the station. 
+        Potentially use the angle of the camera to the ground to detect if balanced or not.
+        Maybe also use a second, downward facing camera to see if balanced (lights turn on when balanced). 
