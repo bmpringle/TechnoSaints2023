@@ -6,6 +6,7 @@
 
 #include "motors/Motor.h"
 #include "vision/PositionDetectionSystem.h"
+#include "time/Timer.h"
 
 class Robot : public frc::TimedRobot {
      public:
@@ -21,7 +22,9 @@ class Robot : public frc::TimedRobot {
           void AutonomousExit() override;
           void TeleopInit() override;
           void TeleopPeriodic() override;
-          void TeleopExit() override;
+          void TeleopExit() override; 
+
+          ~Robot() override;
 
      private:
           void teleopMovementPeriodic();
@@ -39,7 +42,12 @@ class Robot : public frc::TimedRobot {
           
           double teleopMovementPeriodicCallRate = 1.0 / 60.0;
 
-          PositionDetectionSystem positionDetector;
+          std::thread cameraFunctionThread;
+
+          Field gameField;
+
+          Timer movementUpdateTimer;
+          
 };
 
 #endif

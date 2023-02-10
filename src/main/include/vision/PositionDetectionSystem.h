@@ -14,18 +14,12 @@
 #include <mutex>
 #include <map>
 
-class PositionDetectionSystem {
-     public:
-          PositionDetectionSystem(int cameraCount = 1);
-          ~PositionDetectionSystem();
+namespace pds {
+     void cameraThreadFunction(int cameraCount);
 
-          void update();
-     private:
-          Field field;
+     Field createField();
 
-          int cameraCount;
-
-          std::thread cameraFunctionThread;
-};
+     void freeField(Field& field);
+}
 
 #endif

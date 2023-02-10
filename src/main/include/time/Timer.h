@@ -1,18 +1,25 @@
-#ifndef DEBUGTIMER_H
-#define DEBUGTIMER_H
+#ifndef TIMER_H
+#define TIMER_H
 
 #include <chrono>
 #include <map>
 #include <string>
 
-class DebugTimer {
+class Timer {
      public:
-          DebugTimer() {
+          Timer() {
 
           }
 
           void startTimer(std::string name) {
                timers[name] = timeSinceEpoch();
+          }
+
+          //returns millisecons elapsed since startTimer was called and reset the timer specified
+          double resetTimer(std::string name) {
+               double duration = timeSinceEpoch() - timers[name];
+               timers[name] = timeSinceEpoch();
+               return duration;
           }
 
           //returns millisecons elapsed since startTimer was called
@@ -29,6 +36,6 @@ class DebugTimer {
           }
 };
 
-static DebugTimer debug_timer = DebugTimer();
+static Timer debug_timer = Timer();
 
 #endif
