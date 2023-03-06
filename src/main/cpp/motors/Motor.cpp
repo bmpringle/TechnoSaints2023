@@ -40,6 +40,8 @@ void Motor::setIsReversed(bool reversed) {
 void Motor::setMotorPower(double power) {
      this->power = power;
 
+     std::cout << "setting motor power of motor " << canID << " to " << power << std::endl;
+
      switch(motorType) {
           case REV_SPARK_MAX:
                internalMotorSparkMax->Set(power);

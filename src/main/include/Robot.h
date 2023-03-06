@@ -36,7 +36,7 @@ class Robot : public frc::TimedRobot {
 
           LogitechController controller;
 
-          double maxTurnSpeed = 0.3;
+          double maxTurnSpeed = 0.25;
 
           double maxAcceleratePerSecond = 1.0;
           

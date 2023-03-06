@@ -40,10 +40,10 @@ namespace pds {
 
           if(cameraName == "HD Pro Webcam C920") {
                cfg.tagSize = 0.2159_m;
-               cfg.cx = 0;
-               cfg.cy = 0;
-               cfg.fx = 0;
-               cfg.fy = 0;
+               cfg.cx = 665.13873063;
+               cfg.cy = 328.84767588;
+               cfg.fx = 931.54089355;
+               cfg.fy = 938.40802002;
                return cfg;
           }
           throw std::runtime_error(cameraName + std::string(" is an unknown camera type"));
@@ -219,7 +219,7 @@ namespace pds {
 
           for(int i = 0; i < cameraCount; ++i) {
                auto camera = frc::CameraServer::StartAutomaticCapture();
-               camera.SetResolution(320, 240);
+               camera.SetResolution(1280, 720);
 
                std::cout << "Connected to camera " << camera.GetInfo().name << " with ID " << i << std::endl;
 
@@ -245,7 +245,8 @@ namespace pds {
                     for(const frc::AprilTagDetection* aprilTag : aprilTags) {
                          auto center = aprilTag->GetCenter();
                          cv::rectangle(currentImage, cv::Point(aprilTag->GetCorner(0).x, aprilTag->GetCorner(0).y), cv::Point(aprilTag->GetCorner(2).x, aprilTag->GetCorner(2).y), cv::Scalar(0, 255, 0));
-                         cv::putText(currentImage, std::string("tag id: ") + std::to_string(aprilTag->GetId()), cv::Point(center.x, center.y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
+                         frc::Transform3d estimate = estimators.at(i).Estimate(*aprilTag);
+                         cv::putText(currentImage, std::string("tag id: ") + std::to_string(aprilTag->GetId()) + std::string("\n[") + std::to_string(estimate.X().value()) + std::string(",") + std::to_string(estimate.Y().value()) + std::string(",") + std::to_string(estimate.Z().value()) + std::string("]"), cv::Point(center.x, center.y), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 255));
                     }
 
                     sources[i].PutFrame(currentImage);
