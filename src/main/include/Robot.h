@@ -2,11 +2,13 @@
 #define ROBOT_H
 
 #include <frc/TimedRobot.h>
+#include <frc/DigitalInput.h>
 #include "io/LogitechController.h"
 
 #include "motors/Motor.h"
 #include "vision/PositionDetectionSystem.h"
 #include "time/Timer.h"
+#include <atomic>
 
 class Robot : public frc::TimedRobot {
      public:
@@ -34,19 +36,20 @@ class Robot : public frc::TimedRobot {
           Motor backLeft;
           Motor backRight;
 
+          Motor armPivot;
+          Motor armExtension;
+          frc::DigitalInput armPivotLimit = frc::DigitalInput(0);
+
           LogitechController controller;
-
-          double maxTurnSpeed = 0.25;
-
-          double maxAcceleratePerSecond = 1.0;
-          
-          double teleopMovementPeriodicCallRate = 1.0 / 60.0;
 
           std::thread cameraFunctionThread;
 
           Field gameField;
 
           Timer movementUpdateTimer;
+
+          std::thread teleopMovementThread;
+          std::atomic<bool> endTeleopMovement;
           
 };
 

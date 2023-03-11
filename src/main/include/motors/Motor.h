@@ -7,6 +7,7 @@
 #include <ctre/phoenix/motorcontrol/can/TalonFX.h>
 
 #include <memory>
+#include <vector>
 
 //Motor class to handle hardware specific details
 class Motor {
@@ -23,7 +24,9 @@ class Motor {
 
           double getMotorPower(); //returns member variable power
 
+          void goTo(double displacement); //closed loop encoder, displacement is in meters. CURRENTLY ASSUMES IT IS BEING CALLED ON TALON FX
 
+          void setDataForEncoderMovement(double gear_ratio, double wheel_circumference); //set encoder data
 
      private:
           MotorTypes motorType;
@@ -31,6 +34,9 @@ class Motor {
           bool isBrushless = true;
           bool isReversed = false;
           double power = 0.0;
+          double unitsPerMeter = 0;
+
+          std::vector<double> encoderPositionQueue = {0};
           
           std::unique_ptr<rev::CANSparkMax> internalMotorSparkMax; 
           std::unique_ptr<ctre::phoenix::motorcontrol::can::TalonFX> internalMotorTalonFX; 

@@ -9,24 +9,32 @@
 #define FR_MOTOR_ID 0
 #define BL_MOTOR_ID 3
 #define BR_MOTOR_ID 1
+#define ARM_PIVOT_MOTOR_ID 4
+#define ARM_EXTENSION_MOTOR_ID 5
 
 //Motor Hardware Specifications
 #define FL_MOTOR_TYPE TALON_FX
 #define FR_MOTOR_TYPE TALON_FX
 #define BL_MOTOR_TYPE TALON_FX
 #define BR_MOTOR_TYPE TALON_FX
+#define ARM_PIVOT_MOTOR_TYPE REV_SPARK_MAX
+#define ARM_EXTENSION_MOTOR_TYPE REV_SPARK_MAX
 
 #define FL_MOTOR_BRUSHLESS true
 #define FR_MOTOR_BRUSHLESS true
 #define BL_MOTOR_BRUSHLESS true
 #define BR_MOTOR_BRUSHLESS true
+#define ARM_PIVOT_MOTOR_BRUSHLESS true
+#define ARM_EXTENSION_MOTOR_BRUSHLESS true
 
 #define TEST_RIG false
 
 //initalize member variables in the constructor and not in RobotInit because otherwise the compiler will complain since there's no default constructor for Motor and frc::XboxController
 Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)), frontRight(Motor(FR_MOTOR_TYPE, FR_MOTOR_ID, FR_MOTOR_BRUSHLESS)), 
                     backLeft(Motor(BL_MOTOR_TYPE, BL_MOTOR_ID, BL_MOTOR_BRUSHLESS)), backRight(Motor(BR_MOTOR_TYPE, BR_MOTOR_ID, BR_MOTOR_BRUSHLESS)), 
-                    controller(LogitechController(0)), cameraFunctionThread(std::thread(pds::cameraThreadFunction, 1)), gameField(pds::createField()), movementUpdateTimer(Timer()) {
+                    controller(LogitechController(0)), cameraFunctionThread(std::thread(pds::cameraThreadFunction, 1)), gameField(pds::createField()), 
+                    movementUpdateTimer(Timer()), armPivot(ARM_PIVOT_MOTOR_TYPE, ARM_PIVOT_MOTOR_ID, ARM_PIVOT_MOTOR_BRUSHLESS), 
+                    armExtension(ARM_EXTENSION_MOTOR_TYPE, ARM_EXTENSION_MOTOR_ID, ARM_EXTENSION_MOTOR_BRUSHLESS) {
      
      if(TEST_RIG) {
           frontRight.setIsReversed(true);
@@ -35,6 +43,11 @@ Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)
           frontLeft.setIsReversed(true);
           backLeft.setIsReversed(true);
      }  
+
+     frontLeft.setDataForEncoderMovement(8.27, 4 * M_PI);
+     frontRight.setDataForEncoderMovement(8.27, 4 * M_PI);
+     backLeft.setDataForEncoderMovement(8.27, 4 * M_PI);
+     backRight.setDataForEncoderMovement(8.27, 4 * M_PI);
 }
 
 Robot::~Robot() {
@@ -44,9 +57,10 @@ Robot::~Robot() {
 void Robot::TeleopInit() {
      std::cout << "Teleop Init Complete!" << std::endl;
 
-     //std::function<void()> movementPeriodicFunction = std::bind(&Robot::teleopMovementPeriodic, this);
-     //this->AddPeriodic(movementPeriodicFunction, std::chrono::duration<double>(teleopMovementPeriodicCallRate));
-     movementUpdateTimer.startTimer("movementPeriodicTimer");
+     std::function<void()> teleopMovementFunction = std::bind(&Robot::teleopMovementPeriodic, this);
+
+     endTeleopMovement = false;
+     teleopMovementThread = std::thread(teleopMovementFunction);
 }
 
 int double_sign_function(double x) {
@@ -54,63 +68,134 @@ int double_sign_function(double x) {
 }
 
 void Robot::teleopMovementPeriodic() {
-     if(controller.GetLeftTriggerAxis() > 0) { //turn left if left trigger is being used
-          frontLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          frontRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          backLeft.setMotorPower(-controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          backRight.setMotorPower(controller.GetLeftTriggerAxis() * maxTurnSpeed);
-          return;
-     }
+     const double DEAD_ZONE = 0.05;
+     const double MAX_TURN_SPEED = 0.25;
+     const double MAX_SLOW_TURN_SPEED = 0.10;
+     const double MAX_STRAIGHT_SPEED = 0.4;
+     const double ACCELERATION_SPEED = 3.0;
+     const double UPDATE_FREQUENCY = 100;
+     const double DECELERATION_SPEED = 10.0;
+     const double MAX_DRIFT_FACTOR = 0.5;
 
-     if(controller.GetRightTriggerAxis() > 0) { //turn right if right trigger is being used
-          frontLeft.setMotorPower(controller.GetRightTriggerAxis() * maxTurnSpeed);
-          frontRight.setMotorPower(-controller.GetRightTriggerAxis() * maxTurnSpeed);
-          backLeft.setMotorPower(controller.GetRightTriggerAxis() * maxTurnSpeed);
-          backRight.setMotorPower(-controller.GetRightTriggerAxis() * maxTurnSpeed);
-          return;
-     }
+     double doing_point_turn = false;
+     double doing_drift_turn = false;
 
-     /*if((controller.GetRightTriggerAxis() > 0) && (controller.GetLeftTriggerAxis() > 0)) { //if either both or neither triggers are being used, set all power to 0
-          frontLeft.setMotorPower(0);
-          frontRight.setMotorPower(0);
-          backLeft.setMotorPower(0);
-          backRight.setMotorPower(0);
-     }*/
+     int i = 0;
 
-     double timeSinceLastCallMilliseconds = movementUpdateTimer.resetTimer("movementPeriodicTimer");
+     while(!endTeleopMovement) {
+          sleep(1.0 / UPDATE_FREQUENCY); //should be called every 1/100 of a second bc of this
 
-     std::cout << controller.GetLeftY() << std::endl;
+          double left_stick_y_value = controller.GetLeftY();
+          double right_stick_y_value = controller.GetRightY();
 
-     //combine the turn and straight movement powers to allow for both to happen at the same time (positive straight movement)
-     if(controller.GetLeftY() > 0.025) {  //0.05 is a dead zone, used both in order to both prevent accidental movement and to keep a left stick that reports a resting value that is slightly greater than 0 from constantly moving the robot forwards
-          double powerDiff = std::min(1.0 - frontLeft.getMotorPower(), std::min(1.0 - frontRight.getMotorPower(), std::min(1.0 - backLeft.getMotorPower(), std::min(1.0 - backRight.getMotorPower(), controller.GetLeftY()))));
-          
-          //take minimum magnitude between previously calculated powerDiff and max acceleration per second * elapsed time in seconds
-          powerDiff = double_sign_function(powerDiff) * std::min(std::abs(powerDiff), maxAcceleratePerSecond * timeSinceLastCallMilliseconds / 1000.0);
-          frontLeft.setMotorPower(frontLeft.getMotorPower() + powerDiff);
-          frontRight.setMotorPower(frontRight.getMotorPower() + powerDiff);
-          backLeft.setMotorPower(backLeft.getMotorPower() + powerDiff);
-          backRight.setMotorPower(backRight.getMotorPower() + powerDiff);
-     }else if(controller.GetLeftY() < -0.025) { //0.05 is a dead zone, used both in order to both prevent accidental movement and to keep a left stick that reports a resting value that is slightly less than 0 from constantly moving the robot backwards
-          double powerDiff = -std::min(1.0 + frontLeft.getMotorPower(), std::min(1.0 + frontRight.getMotorPower(), std::min(1.0 + backLeft.getMotorPower(), std::min(1.0 + backRight.getMotorPower(), -controller.GetLeftY()))));
-          
-          //take minimum magnitude between previously calculated powerDiff and max acceleration per second * elapsed time in seconds
-          powerDiff = double_sign_function(powerDiff) * std::min(std::abs(powerDiff), maxAcceleratePerSecond * timeSinceLastCallMilliseconds / 1000.0);
+          double left_trigger_axis = controller.GetLeftTriggerAxis();
+          double right_trigger_axis = controller.GetRightTriggerAxis();
+          double net_trigger_axis = right_trigger_axis - left_trigger_axis;
+          double turn_value = net_trigger_axis * MAX_TURN_SPEED;// + right_stick_y_value * MAX_SLOW_TURN_SPEED;
 
-          frontLeft.setMotorPower(frontLeft.getMotorPower() + powerDiff);
-          frontRight.setMotorPower(frontRight.getMotorPower() + powerDiff);
-          backLeft.setMotorPower(backLeft.getMotorPower() + powerDiff);
-          backRight.setMotorPower(backRight.getMotorPower() + powerDiff);
-     }else {
-          //double powerDiff = std::min()
-          frontLeft.setMotorPower(0);
-          frontRight.setMotorPower(0);
-          backLeft.setMotorPower(0);
-          backRight.setMotorPower(0);
+          const double current_back_left_power = backLeft.getMotorPower();
+          const double current_back_right_power = backRight.getMotorPower();
+          const double current_front_left_power = frontLeft.getMotorPower();
+          const double current_front_right_power = frontRight.getMotorPower();
+
+          ++i;
+
+          if(i == UPDATE_FREQUENCY) {
+               i = 0;
+               std::cout << "should do turn: " << (((abs(turn_value) > DEAD_ZONE) == true) ? "TRUE" : "FALSE") << std::endl;
+               std::cout << "should do lateral movement: " << (((abs(left_stick_y_value) > DEAD_ZONE) == true) ? "TRUE" : "FALSE") << std::endl;
+          }
+
+          if(abs(left_stick_y_value) < DEAD_ZONE && abs(turn_value) > DEAD_ZONE) { //point turn
+               frontLeft.setMotorPower(-turn_value);
+               frontRight.setMotorPower(turn_value);
+               backLeft.setMotorPower(-turn_value);
+               backRight.setMotorPower(turn_value);
+
+               doing_point_turn = true;
+
+               continue;
+          }else if(doing_point_turn) {
+               doing_point_turn = false;
+
+               frontLeft.setMotorPower(0);
+               frontRight.setMotorPower(0);
+               backLeft.setMotorPower(0);
+               backRight.setMotorPower(0);
+
+               continue;
+          }
+
+          double acceleration = ACCELERATION_SPEED; //normal acceleration speed
+
+          if(abs(left_stick_y_value) < DEAD_ZONE && abs(turn_value) < DEAD_ZONE) { //if decelerating, set different acceleration speed
+               acceleration = DECELERATION_SPEED;
+          }
+
+          const double start_power = (current_back_left_power + current_back_right_power + current_front_left_power + current_front_right_power) / 4.0;
+          const double goal = MAX_STRAIGHT_SPEED * left_stick_y_value;
+
+          if(abs(left_stick_y_value) > DEAD_ZONE && abs(turn_value) > DEAD_ZONE) { //drift
+               double left_drift_factor = 1;
+               double right_drift_factor = 1;
+
+               if(turn_value > DEAD_ZONE) {
+                    right_drift_factor = MAX_DRIFT_FACTOR * (1 - abs(turn_value));
+                    left_drift_factor = 1 - right_drift_factor;
+               }
+
+               if(turn_value < DEAD_ZONE) {
+                    left_drift_factor = MAX_DRIFT_FACTOR * (1 - abs(turn_value));
+                    right_drift_factor = 1 - left_drift_factor;
+               }
+
+               const double end_power = start_power + double_sign_function(goal - start_power) * acceleration / UPDATE_FREQUENCY;
+
+               frontLeft.setMotorPower(left_drift_factor * end_power);
+               frontRight.setMotorPower(right_drift_factor * end_power);
+               backLeft.setMotorPower(left_drift_factor * end_power);
+               backRight.setMotorPower(right_drift_factor * end_power);
+
+               doing_drift_turn = true;
+
+               continue;
+          }else if(doing_drift_turn) {
+               doing_drift_turn = false;
+
+               frontLeft.setMotorPower(start_power);
+               frontRight.setMotorPower(start_power);
+               backLeft.setMotorPower(start_power);
+               backRight.setMotorPower(start_power);
+
+               continue;
+          }
+
+          //move straight
+
+          if(abs(goal - start_power) <= acceleration / UPDATE_FREQUENCY) { //can do change instantly
+               frontLeft.setMotorPower(goal);
+               frontRight.setMotorPower(goal);
+               backLeft.setMotorPower(goal);
+               backRight.setMotorPower(goal);
+
+               continue;
+          }
+
+          //get closer to target speed
+
+          const double end_power = start_power + double_sign_function(goal - start_power) * acceleration / UPDATE_FREQUENCY;
+
+          frontLeft.setMotorPower(end_power);
+          frontRight.setMotorPower(end_power);
+          backLeft.setMotorPower(end_power);
+          backRight.setMotorPower(end_power);
      }
 }
 
 void Robot::TeleopExit() {
+     endTeleopMovement = true;
+     teleopMovementThread.join();
+
      frontLeft.setMotorPower(0);
      frontRight.setMotorPower(0);
      backLeft.setMotorPower(0);
@@ -121,6 +206,11 @@ void Robot::TeleopExit() {
 
 void Robot::AutonomousInit() {
      std::cout << "Autonomous Init Complete!" << std::endl;
+
+     frontLeft.goTo(2);
+     frontRight.goTo(2);
+     backLeft.goTo(2);
+     backRight.goTo(2);
 }
 
 void Robot::AutonomousPeriodic() {
@@ -140,7 +230,7 @@ void Robot::RobotPeriodic() {
 }
 
 void Robot::TeleopPeriodic() {
-     teleopMovementPeriodic();
+     
 }
 
 void Robot::DisabledInit() {
