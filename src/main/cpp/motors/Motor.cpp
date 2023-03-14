@@ -42,7 +42,7 @@ void Motor::setMotorPower(double power) {
      if(this->power == power) {
           return;
      }
-     
+
      this->power = power;
 
      switch(motorType) {
@@ -64,6 +64,7 @@ void Motor::setDataForEncoderMovement(double gear_ratio, double wheel_circumfere
      switch(motorType) {
           case TALON_FX:
                sensor_units_per_rotation = 4096;
+               break;
           default:
                std::cout << "Motor encoder functions for motor with CAN id " << canID << " has not been properly implemented in the Motor class" << std::endl;
                break;

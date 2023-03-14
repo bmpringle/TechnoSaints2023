@@ -98,12 +98,7 @@ void Robot::teleopMovementPeriodic() {
           const double current_front_left_power = frontLeft.getMotorPower();
           const double current_front_right_power = frontRight.getMotorPower();
 
-          frontLeft.setMotorPower(-turn_value);
-          frontRight.setMotorPower(turn_value);
-          backLeft.setMotorPower(-turn_value);
-          backRight.setMotorPower(turn_value);
-
-          /*++i;
+          ++i;
 
           if(i == UPDATE_FREQUENCY) {
                i = 0;
@@ -111,7 +106,7 @@ void Robot::teleopMovementPeriodic() {
                std::cout << "should do lateral movement: " << (((abs(left_stick_y_value) > DEAD_ZONE) == true) ? "TRUE" : "FALSE") << std::endl;
           }
 
-          if(abs(left_stick_y_value) < DEAD_ZONE && abs(turn_value) > DEAD_ZONE) { //point turn
+          if(/*abs(left_stick_y_value) < DEAD_ZONE && */ abs(turn_value) > DEAD_ZONE) { //point turn
                frontLeft.setMotorPower(-turn_value);
                frontRight.setMotorPower(turn_value);
                backLeft.setMotorPower(-turn_value);
@@ -193,7 +188,7 @@ void Robot::teleopMovementPeriodic() {
           frontLeft.setMotorPower(end_power);
           frontRight.setMotorPower(end_power);
           backLeft.setMotorPower(end_power);
-          backRight.setMotorPower(end_power);*/
+          backRight.setMotorPower(end_power);
      }
 }
 
@@ -237,11 +232,11 @@ void Robot::armMovePeriodic() {
      }
     
     if(arm_enum == FORWARDS) {
-          armPivot.setMotorPower(0.4);
+          armPivot.setMotorPower(1);
     }
 
     if(arm_enum == BACKWARDS) {
-          armPivot.setMotorPower(-0.4);
+          armPivot.setMotorPower(-1);
     }
 
     if(arm_enum == HOLD || armPivotLimit.Get()) {
