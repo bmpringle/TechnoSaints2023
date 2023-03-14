@@ -192,6 +192,66 @@ void Robot::teleopMovementPeriodic() {
      }
 }
 
+void Robot::armMovePeriodic() {
+     enum ARM_MOVE_ENUM {
+          FORWARDS,
+          BACKWARDS,
+          HOLD
+     };
+
+     ARM_MOVE_ENUM arm_enum;
+     
+     switch(controller.GetPOV()) {
+          case 0:
+               arm_enum = FORWARDS;
+               break;
+          case 45:
+               arm_enum = FORWARDS;
+               break;
+          case 90:
+               arm_enum = HOLD;
+               break;
+          case 135:
+               arm_enum = BACKWARDS;
+               break;
+          case 180:
+               arm_enum = BACKWARDS;
+               break;
+          case 225:
+               arm_enum = BACKWARDS;
+               break;
+          case 270:
+               arm_enum = HOLD;
+               break;
+          case 315:
+               arm_enum = HOLD;
+               break;
+          default:
+               arm_enum = HOLD;
+               break;
+     }
+    
+    if(arm_enum == FORWARDS) {
+          armPivot.setMotorPower(0.4);
+    }
+
+    if(arm_enum == BACKWARDS) {
+          armPivot.setMotorPower(-0.4);
+    }
+
+    if(arm_enum == HOLD || armPivotLimit.Get()) {
+          armPivot.setMotorPower(0);
+    }
+
+    if(controller.GetLeftBumper() && !controller.GetRightBumper()) {
+          armExtension.setMotorPower(-0.2);
+    }else if(!controller.GetLeftBumper() && controller.GetRightBumper()) {
+          armExtension.setMotorPower(0.2);
+    }else {
+          armExtension.setMotorPower(0);  
+    }
+}
+
 void Robot::TeleopExit() {
      endTeleopMovement = true;
      teleopMovementThread.join();
@@ -230,7 +290,7 @@ void Robot::RobotPeriodic() {
 }
 
 void Robot::TeleopPeriodic() {
-     
+     armMovePeriodic();
 }
 
 void Robot::DisabledInit() {

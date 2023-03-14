@@ -30,6 +30,7 @@ class Robot : public frc::TimedRobot {
 
      private:
           void teleopMovementPeriodic();
+          void armMovePeriodic();
 
           Motor frontLeft;
           Motor frontRight;
