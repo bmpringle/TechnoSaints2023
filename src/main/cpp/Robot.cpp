@@ -98,7 +98,12 @@ void Robot::teleopMovementPeriodic() {
           const double current_front_left_power = frontLeft.getMotorPower();
           const double current_front_right_power = frontRight.getMotorPower();
 
-          ++i;
+          frontLeft.setMotorPower(-turn_value);
+          frontRight.setMotorPower(turn_value);
+          backLeft.setMotorPower(-turn_value);
+          backRight.setMotorPower(turn_value);
+
+          /*++i;
 
           if(i == UPDATE_FREQUENCY) {
                i = 0;
@@ -188,7 +193,7 @@ void Robot::teleopMovementPeriodic() {
           frontLeft.setMotorPower(end_power);
           frontRight.setMotorPower(end_power);
           backLeft.setMotorPower(end_power);
-          backRight.setMotorPower(end_power);
+          backRight.setMotorPower(end_power);*/
      }
 }
 
