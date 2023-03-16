@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <vector>
+#include <optional>
 
 //Motor class to handle hardware specific details
 class Motor {
@@ -39,6 +40,7 @@ class Motor {
           std::vector<double> encoderPositionQueue = {0};
           
           std::unique_ptr<rev::CANSparkMax> internalMotorSparkMax; 
+
           std::unique_ptr<ctre::phoenix::motorcontrol::can::TalonFX> internalMotorTalonFX; 
 };
 

@@ -38,15 +38,15 @@ namespace pds {
      frc::AprilTagPoseEstimator::Config getCameraConfig(std::string cameraName) {
           frc::AprilTagPoseEstimator::Config cfg;
 
-          //if(cameraName == "HD Pro Webcam C920") {
+          if(cameraName == "HD Pro Webcam C920") {
                cfg.tagSize = 0.2159_m;
                cfg.cx = 665.13873063;
                cfg.cy = 328.84767588;
                cfg.fx = 931.54089355;
                cfg.fy = 938.40802002;
                return cfg;
-          //}
-          //throw std::runtime_error(cameraName + std::string(" is an unknown camera type"));
+          }
+          throw std::runtime_error(cameraName + std::string(" is an unknown camera type"));
      }
 
      Field createField() {

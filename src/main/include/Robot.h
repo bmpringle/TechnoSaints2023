@@ -9,6 +9,7 @@
 #include "vision/PositionDetectionSystem.h"
 #include "time/Timer.h"
 #include <atomic>
+#include <frc/Servo.h>
 
 class Robot : public frc::TimedRobot {
      public:
@@ -40,6 +41,14 @@ class Robot : public frc::TimedRobot {
           Motor armPivot;
           Motor armExtension;
           frc::DigitalInput armPivotLimit = frc::DigitalInput(0);
+
+          frc::Servo armServo1;
+          frc::Servo armServo2;
+
+          enum {
+               CLOSED,
+               OPEN
+          } arm_servo_state;
 
           LogitechController controller;
 
