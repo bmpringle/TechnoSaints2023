@@ -82,10 +82,10 @@ int double_sign_function(double x) {
 
 void Robot::teleopMovementPeriodic() {
      const double DEAD_ZONE = 0.05;
-     const double MAX_TURN_SPEED = 0.6;
-     const double MAX_SLOW_TURN_SPEED = 0.2;
-     const double MAX_STRAIGHT_SPEED = 0.8;
-     const double ACCELERATION_SPEED = 3.0;
+     const double MAX_TURN_SPEED = 0.3;
+     const double MAX_SLOW_TURN_SPEED = 0.1;
+     const double MAX_STRAIGHT_SPEED = 0.55;
+     const double ACCELERATION_SPEED = 2.0;
      const double UPDATE_FREQUENCY = 100;
      const double DECELERATION_SPEED = 10.0;
      //const double MAX_DRIFT_FACTOR = 0.5;
@@ -97,12 +97,12 @@ void Robot::teleopMovementPeriodic() {
           sleep(1.0 / UPDATE_FREQUENCY); //should be called every 1/100 of a second bc of this
 
           double left_stick_y_value = controller.GetLeftY();
-          double right_stick_y_value = controller.GetRightY();
+          double right_stick_x_value = controller.GetRightX();
 
           double left_trigger_axis = controller.GetLeftTriggerAxis();
           double right_trigger_axis = controller.GetRightTriggerAxis();
           double net_trigger_axis = right_trigger_axis - left_trigger_axis;
-          double turn_value = net_trigger_axis * MAX_TURN_SPEED + right_stick_y_value * MAX_SLOW_TURN_SPEED;
+          double turn_value = net_trigger_axis * MAX_TURN_SPEED + right_stick_x_value * MAX_SLOW_TURN_SPEED;
 
           const double current_back_left_power = backLeft.getMotorPower();
           const double current_back_right_power = backRight.getMotorPower();
@@ -195,6 +195,8 @@ void Robot::teleopMovementPeriodic() {
      }
 }
 
+int i = 0;
+
 void Robot::armMovePeriodic() {
      enum ARM_MOVE_ENUM {
           FORWARDS,
@@ -206,35 +208,35 @@ void Robot::armMovePeriodic() {
      
      switch(controller.GetPOV()) {
           case 0:
-               arm_enum = FORWARDS;
+               arm_enum = BACKWARDS;
                break;
           case 45:
-               arm_enum = FORWARDS;
+               arm_enum = BACKWARDS;
                break;
           case 90:
                arm_enum = HOLD;
                break;
           case 135:
-               arm_enum = BACKWARDS;
+               arm_enum = FORWARDS;
                break;
           case 180:
-               arm_enum = BACKWARDS;
+               arm_enum = FORWARDS;
                break;
           case 225:
-               arm_enum = BACKWARDS;
+               arm_enum = FORWARDS;
                break;
           case 270:
                arm_enum = HOLD;
                break;
           case 315:
-               arm_enum = HOLD;
+               arm_enum = BACKWARDS;
                break;
           default: 
                arm_enum = HOLD;
                break;
      }
 
-     double pivot_power_speed = controller.GetXButton() ? 0.5 : 0.3;
+     double pivot_power_speed = controller.GetXButton() ? 0.7 : 0.5;
 
      double pivot_power = 0;
 
@@ -246,28 +248,71 @@ void Robot::armMovePeriodic() {
           pivot_power = -pivot_power_speed;
      }
 
-     if(arm_enum == HOLD || (arm_enum == BACKWARDS && !armPivotLimit.Get())) {
+     if(arm_enum == HOLD || (arm_enum == BACKWARDS && !armPivotLimit.Get()) || (arm_enum == FORWARDS && !armPivotLimit2.Get())) {
           pivot_power = 0;
      }
 
      if(armPivot.getMotorPower() != pivot_power) {
           armPivot.setMotorPower(pivot_power);
+          std::cout << "arm pivot encoder position (change): " << armPivot.getPosition() << std::endl;
      }
-    
 
      if(controller.GetLeftBumper() && !controller.GetRightBumper() /*&& armExtension.getEncoderPosition() > 0.1*/) {
-               armExtension.setMotorPower(-0.2);
+          armExtension.setMotorPower(-0.1);
+          if(i == 60) {
+               i = 0;
+               std::cout << "arm extension encoder position (contract): " << armExtension.getPosition() << std::endl;
+          }
      }else if(!controller.GetLeftBumper() && controller.GetRightBumper()/* && armExtension.getEncoderPosition() < 0.4*/) {
-               armExtension.setMotorPower(0.2);
+          armExtension.setMotorPower(0.1);
+          if(i == 60) {
+               i = 0;
+               std::cout << "arm extension encoder position (expand): " << armExtension.getPosition() << std::endl;
+          }
      }else {
-               armExtension.setMotorPower(0);  
+          armExtension.setMotorPower(0);  
      }
 
+     ++i;
+
      if(controller.GetAButtonPressed()) {
-          arm_servo_state = (decltype(arm_servo_state))((decltype(arm_servo_state))(arm_servo_state + 1) % 2);
+          switch(arm_servo_state) {
+               case CLOSED_CONE:
+                    arm_servo_state = OPEN;
+                    break;
+               case CLOSED_CUBE:
+                    arm_servo_state = OPEN;
+                    break;
+               case OPEN:
+                    arm_servo_state = CLOSED_CONE;
+                    break;
+          }
+     }
+
+     if(controller.GetBButtonPressed()) {
+          switch(arm_servo_state) {
+               case CLOSED_CONE:
+                    arm_servo_state = OPEN;
+                    break;
+               case CLOSED_CUBE:
+                    arm_servo_state = OPEN;
+                    break;
+               case OPEN:
+                    arm_servo_state = CLOSED_CUBE;
+                    break;
+          }
      }
 
      if(arm_servo_state == OPEN) {
+          if(armServo1.GetPosition() != 1) {
+               armServo1.SetPosition(1);
+          }
+          if(armServo2.GetPosition() != 1) {
+               armServo2.SetPosition(1);
+          }
+     }
+
+     if(arm_servo_state == CLOSED_CONE) {
           if(armServo1.GetPosition() != 0) {
                armServo1.SetPosition(0);
           }
@@ -276,12 +321,12 @@ void Robot::armMovePeriodic() {
           }
      }
 
-     if(arm_servo_state == CLOSED) {
-          if(armServo1.GetPosition() != 1) {
-               armServo1.SetPosition(1);
+     if(arm_servo_state == CLOSED_CUBE) {
+          if(armServo1.GetPosition() != 0.5) {
+               armServo1.SetPosition(0.5);
           }
-          if(armServo2.GetPosition() != 1) {
-               armServo2.SetPosition(1);
+          if(armServo2.GetPosition() != 0.5) {
+               armServo2.SetPosition(0.5);
           }
      }
 }
@@ -303,11 +348,6 @@ void Robot::TeleopExit() {
 
 void Robot::AutonomousInit() {
      std::cout << "Autonomous Init Complete!" << std::endl;
-
-     /*frontLeft.goTo(2);
-     frontRight.goTo(2);
-     backLeft.goTo(2);
-     backRight.goTo(2);*/
 }
 
 void Robot::AutonomousPeriodic() {

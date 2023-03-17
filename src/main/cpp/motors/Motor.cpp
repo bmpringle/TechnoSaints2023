@@ -6,6 +6,7 @@ Motor::Motor(MotorTypes type, uint id, bool isMotorBrushless) : motorType(type),
      switch(type) {
           case REV_SPARK_MAX:
                internalMotorSparkMax = std::make_unique<rev::CANSparkMax>(id, (isMotorBrushless) ? rev::CANSparkMaxLowLevel::MotorType::kBrushless : rev::CANSparkMaxLowLevel::MotorType::kBrushed);
+               internalEncoderSparkMax = std::make_unique<rev::SparkMaxRelativeEncoder>(internalMotorSparkMax->GetEncoder());
                break;
           case TALON_FX:
                internalMotorTalonFX = std::make_unique<ctre::phoenix::motorcontrol::can::TalonFX>(id);
@@ -73,14 +74,33 @@ void Motor::setDataForEncoderMovement(double gear_ratio, double wheel_circumfere
 }
 
 void Motor::goTo(double displacement) {
-     encoderPositionQueue.push_back(encoderPositionQueue.at(encoderPositionQueue.size() - 1) + displacement * unitsPerMeter);
+     if(motorType != TALON_FX) {
+          throw std::runtime_error("not useable for non talon fx motor function - Motor::goTo(double)");
+     }
 
+     encoderPositionQueue.push_back(encoderPositionQueue.at(encoderPositionQueue.size() - 1) + displacement * unitsPerMeter);
+     
      if(internalMotorTalonFX->GetSelectedSensorPosition() == encoderPositionQueue.front()) {
           if(encoderPositionQueue.size() > 1) {
                encoderPositionQueue.erase(encoderPositionQueue.begin());
                internalMotorTalonFX->SetSelectedSensorPosition(encoderPositionQueue.front());
           }
      }
+}
+
+void Motor::setEncoderPosition(double pos_in_inches) {
+     internalMotorTalonFX->SetSelectedSensorPosition(pos_in_inches);
+}
+
+double Motor::getPosition() {
+     switch(motorType) {
+          case REV_SPARK_MAX:
+               return internalEncoderSparkMax->GetPosition();
+          case TALON_FX:
+               return internalMotorTalonFX->GetSelectedSensorPosition();
+     }
+
+     return 0;
 }
 
 double Motor::getMotorPower() {

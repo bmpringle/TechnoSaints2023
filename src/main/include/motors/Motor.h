@@ -27,7 +27,11 @@ class Motor {
 
           void goTo(double displacement); //closed loop encoder, displacement is in meters. CURRENTLY ASSUMES IT IS BEING CALLED ON TALON FX
 
+          double getPosition();
+
           void setDataForEncoderMovement(double gear_ratio, double wheel_circumference); //set encoder data
+
+          void setEncoderPosition(double pos_in_inches);
 
      private:
           MotorTypes motorType;
@@ -40,6 +44,7 @@ class Motor {
           std::vector<double> encoderPositionQueue = {0};
           
           std::unique_ptr<rev::CANSparkMax> internalMotorSparkMax; 
+          std::unique_ptr<rev::SparkMaxRelativeEncoder> internalEncoderSparkMax;
 
           std::unique_ptr<ctre::phoenix::motorcontrol::can::TalonFX> internalMotorTalonFX; 
 };

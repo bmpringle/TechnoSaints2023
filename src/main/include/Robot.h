@@ -41,12 +41,14 @@ class Robot : public frc::TimedRobot {
           Motor armPivot;
           Motor armExtension;
           frc::DigitalInput armPivotLimit = frc::DigitalInput(0);
+          frc::DigitalInput armPivotLimit2 = frc::DigitalInput(1);
 
           frc::Servo armServo1;
           frc::Servo armServo2;
 
           enum {
-               CLOSED,
+               CLOSED_CONE,
+               CLOSED_CUBE,
                OPEN
           } arm_servo_state;
 
