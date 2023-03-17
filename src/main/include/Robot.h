@@ -62,6 +62,9 @@ class Robot : public frc::TimedRobot {
 
           std::thread teleopMovementThread;
           std::atomic<bool> endTeleopMovement;
+
+          std::chrono::_V2::system_clock::time_point start = std::chrono::system_clock::now();
+          bool set_start = true;
           
 };
 

@@ -47,20 +47,6 @@ Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)
      frontRight.setDataForEncoderMovement(8.27, 4 * M_PI);
      backLeft.setDataForEncoderMovement(8.27, 4 * M_PI);
      backRight.setDataForEncoderMovement(8.27, 4 * M_PI);
-     //armExtension.setDataForEncoderMovement(16, 1);
-
-     /*int32_t max = 0;
-     int32_t deadband_max = 0;
-     int32_t center = 0;
-     int32_t deadband_min = 0;
-     int32_t min = 0;
-
-     armServo1.GetRawBounds(&max, &deadband_max, &center, &deadband_min, &min);
-
-     std::cout << "settings: " << max << ", " << deadband_max << ", " << center << ", " << deadband_min << ", " << min << std::endl;
-
-     armServo1.SetRawBounds(2000, -1500, -1500, -1500, 99);
-     armServo2.SetRawBounds(2000, -1500, -1500, -1500, 99);*/
 }
 
 Robot::~Robot() {
@@ -84,17 +70,16 @@ void Robot::teleopMovementPeriodic() {
      const double DEAD_ZONE = 0.05;
      const double MAX_TURN_SPEED = 0.3;
      const double MAX_SLOW_TURN_SPEED = 0.1;
-     const double MAX_STRAIGHT_SPEED = 0.55;
      const double ACCELERATION_SPEED = 2.0;
      const double UPDATE_FREQUENCY = 100;
      const double DECELERATION_SPEED = 10.0;
-     //const double MAX_DRIFT_FACTOR = 0.5;
 
      double doing_point_turn = false;
-     //double doing_drift_turn = false;
 
      while(!endTeleopMovement) {
           sleep(1.0 / UPDATE_FREQUENCY); //should be called every 1/100 of a second bc of this
+
+          double MAX_STRAIGHT_SPEED = (controller.GetYButton()) ? 0.8 : 0.55;
 
           double left_stick_y_value = controller.GetLeftY();
           double right_stick_x_value = controller.GetRightX();
@@ -138,41 +123,6 @@ void Robot::teleopMovementPeriodic() {
           const double start_power = (current_back_left_power + current_back_right_power + current_front_left_power + current_front_right_power) / 4.0;
           const double goal = MAX_STRAIGHT_SPEED * left_stick_y_value;
 
-          /*if(fabs(left_stick_y_value) > DEAD_ZONE && fabs(turn_value) > DEAD_ZONE) { //drift
-               double left_drift_factor = 1;
-               double right_drift_factor = 1;
-
-               if(turn_value > DEAD_ZONE) {
-                    right_drift_factor = MAX_DRIFT_FACTOR * (1 - fabs(turn_value));
-                    left_drift_factor = 1 - right_drift_factor;
-               }
-
-               if(turn_value < DEAD_ZONE) {
-                    left_drift_factor = MAX_DRIFT_FACTOR * (1 - fabs(turn_value));
-                    right_drift_factor = 1 - left_drift_factor;
-               }
-
-               const double end_power = start_power + double_sign_function(goal - start_power) * acceleration / UPDATE_FREQUENCY;
-
-               frontLeft.setMotorPower(left_drift_factor * end_power);
-               frontRight.setMotorPower(right_drift_factor * end_power);
-               backLeft.setMotorPower(left_drift_factor * end_power);
-               backRight.setMotorPower(right_drift_factor * end_power);
-
-               doing_drift_turn = true;
-
-               continue;
-          }else if(doing_drift_turn) {
-               doing_drift_turn = false;
-
-               frontLeft.setMotorPower(start_power);
-               frontRight.setMotorPower(start_power);
-               backLeft.setMotorPower(start_power);
-               backRight.setMotorPower(start_power);
-
-               continue;
-          }*/
-
           //move straight
 
           if(fabs(goal - start_power) <= acceleration / UPDATE_FREQUENCY) { //can do change instantly
@@ -194,8 +144,6 @@ void Robot::teleopMovementPeriodic() {
           backRight.setMotorPower(end_power);
      }
 }
-
-int i = 0;
 
 void Robot::armMovePeriodic() {
      enum ARM_MOVE_ENUM {
@@ -254,26 +202,15 @@ void Robot::armMovePeriodic() {
 
      if(armPivot.getMotorPower() != pivot_power) {
           armPivot.setMotorPower(pivot_power);
-          std::cout << "arm pivot encoder position (change): " << armPivot.getPosition() << std::endl;
      }
 
      if(controller.GetLeftBumper() && !controller.GetRightBumper() /*&& armExtension.getEncoderPosition() > 0.1*/) {
           armExtension.setMotorPower(-0.1);
-          if(i == 60) {
-               i = 0;
-               std::cout << "arm extension encoder position (contract): " << armExtension.getPosition() << std::endl;
-          }
      }else if(!controller.GetLeftBumper() && controller.GetRightBumper()/* && armExtension.getEncoderPosition() < 0.4*/) {
           armExtension.setMotorPower(0.1);
-          if(i == 60) {
-               i = 0;
-               std::cout << "arm extension encoder position (expand): " << armExtension.getPosition() << std::endl;
-          }
      }else {
           armExtension.setMotorPower(0);  
      }
-
-     ++i;
 
      if(controller.GetAButtonPressed()) {
           switch(arm_servo_state) {
@@ -351,11 +288,81 @@ void Robot::AutonomousInit() {
 }
 
 void Robot::AutonomousPeriodic() {
+     if(set_start) {
+          set_start = false;
+          start = std::chrono::system_clock::now();
+     }
 
+     double ms_since_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
+
+     //close servos AROUND CUBE (500 ms)
+     if(ms_since_start < 500) {
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          armServo1.SetPosition(0.5);
+          armServo2.SetPosition(0.5);
+          return;
+     }
+
+     //pivot arm down (2000 ms)
+     if(ms_since_start < 2500) {
+          armPivot.setMotorPower(-0.2);
+          armExtension.setMotorPower(0);
+          return;
+     }
+
+     //extend arm out (1000 ms)
+     if(ms_since_start < 3500) {
+          armExtension.setMotorPower(0.2);
+          armPivot.setMotorPower(0);
+          return;
+     }
+
+     //open servos (500 ms)
+     if(ms_since_start < 4000) {
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          armServo1.SetPosition(1);
+          armServo2.SetPosition(1);
+          return;
+     }    
+
+     //contract arm back in (1000 ms)
+     if(ms_since_start < 5000) {
+          armExtension.setMotorPower(-0.2);
+          armPivot.setMotorPower(0);
+          return;
+     }
+
+     //pivot arm up (2000 ms)
+     if(ms_since_start < 7000) {
+          armPivot.setMotorPower(0.2);
+          armExtension.setMotorPower(0);
+          return;
+     }
+
+     //move out of community (2000 ms)
+     if(ms_since_start < 9000) {
+          frontLeft.setMotorPower(0.45);
+          frontRight.setMotorPower(0.45);
+          backLeft.setMotorPower(0.45);
+          backRight.setMotorPower(0.45);
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          return;
+     }
+
+     frontLeft.setMotorPower(0);
+     frontRight.setMotorPower(0);
+     backLeft.setMotorPower(0);
+     backRight.setMotorPower(0);
+     armExtension.setMotorPower(0);
+     armPivot.setMotorPower(0);
 }
 
 void Robot::AutonomousExit() {
      std::cout << "Autonomous Exit Complete!" << std::endl;
+     set_start = true;
 }
 
 void Robot::RobotInit() {
