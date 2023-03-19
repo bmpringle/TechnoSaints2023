@@ -29,6 +29,9 @@
 
 #define TEST_RIG false
 
+//set to "HIGH", "MIDDLE", "LOW", or "NOTHING"
+#define AUTO_DROP "MIDDLE" 
+
 //initalize member variables in the constructor and not in RobotInit because otherwise the compiler will complain since there's no default constructor for Motor and frc::XboxController
 Robot::Robot() : frontLeft(Motor(FL_MOTOR_TYPE, FL_MOTOR_ID, FL_MOTOR_BRUSHLESS)), frontRight(Motor(FR_MOTOR_TYPE, FR_MOTOR_ID, FR_MOTOR_BRUSHLESS)), 
                     backLeft(Motor(BL_MOTOR_TYPE, BL_MOTOR_ID, BL_MOTOR_BRUSHLESS)), backRight(Motor(BR_MOTOR_TYPE, BR_MOTOR_ID, BR_MOTOR_BRUSHLESS)), 
@@ -68,8 +71,7 @@ int double_sign_function(double x) {
 
 void Robot::teleopMovementPeriodic() {
      const double DEAD_ZONE = 0.05;
-     const double MAX_TURN_SPEED = 0.3;
-     const double MAX_SLOW_TURN_SPEED = 0.1;
+     const double MAX_TURN_SPEED = 0.25;
      const double ACCELERATION_SPEED = 2.0;
      const double UPDATE_FREQUENCY = 100;
      const double DECELERATION_SPEED = 10.0;
@@ -79,22 +81,18 @@ void Robot::teleopMovementPeriodic() {
      while(!endTeleopMovement) {
           sleep(1.0 / UPDATE_FREQUENCY); //should be called every 1/100 of a second bc of this
 
-          double MAX_STRAIGHT_SPEED = (controller.GetYButton()) ? 0.8 : 0.55;
+          double MAX_STRAIGHT_SPEED = (controller.GetYButton()) ? 0.8 : 0.65;
 
           double left_stick_y_value = controller.GetLeftY();
           double right_stick_x_value = controller.GetRightX();
-
-          double left_trigger_axis = controller.GetLeftTriggerAxis();
-          double right_trigger_axis = controller.GetRightTriggerAxis();
-          double net_trigger_axis = right_trigger_axis - left_trigger_axis;
-          double turn_value = net_trigger_axis * MAX_TURN_SPEED + right_stick_x_value * MAX_SLOW_TURN_SPEED;
+          double turn_value = right_stick_x_value * MAX_TURN_SPEED;
 
           const double current_back_left_power = backLeft.getMotorPower();
           const double current_back_right_power = backRight.getMotorPower();
           const double current_front_left_power = frontLeft.getMotorPower();
           const double current_front_right_power = frontRight.getMotorPower();
 
-          if(/*fabs(left_stick_y_value) < DEAD_ZONE &&*/ fabs(turn_value) > DEAD_ZONE) { //point turn
+          if(fabs(turn_value) > DEAD_ZONE) { //point turn
                frontLeft.setMotorPower(turn_value);
                frontRight.setMotorPower(-turn_value);
                backLeft.setMotorPower(turn_value);
@@ -152,39 +150,20 @@ void Robot::armMovePeriodic() {
           HOLD
      };
 
-     ARM_MOVE_ENUM arm_enum;
-     
-     switch(controller.GetPOV()) {
-          case 0:
-               arm_enum = BACKWARDS;
-               break;
-          case 45:
-               arm_enum = BACKWARDS;
-               break;
-          case 90:
-               arm_enum = HOLD;
-               break;
-          case 135:
-               arm_enum = FORWARDS;
-               break;
-          case 180:
-               arm_enum = FORWARDS;
-               break;
-          case 225:
-               arm_enum = FORWARDS;
-               break;
-          case 270:
-               arm_enum = HOLD;
-               break;
-          case 315:
-               arm_enum = BACKWARDS;
-               break;
-          default: 
-               arm_enum = HOLD;
-               break;
+     ARM_MOVE_ENUM arm_enum = HOLD;
+
+     const double DEAD_ZONE = 0.05;
+     double pivot_power_speed = 0;
+
+     if(controller.GetLeftTriggerAxis() > DEAD_ZONE) {
+          arm_enum = BACKWARDS;
+          pivot_power_speed = (controller.GetXButton() ? 0.7 : 0.5) * controller.GetLeftTriggerAxis();
      }
 
-     double pivot_power_speed = controller.GetXButton() ? 0.7 : 0.5;
+     if(controller.GetRightTriggerAxis() > DEAD_ZONE) {
+          arm_enum = FORWARDS;
+          pivot_power_speed = (controller.GetXButton() ? 0.7 : 0.5) * controller.GetRightTriggerAxis();
+     }
 
      double pivot_power = 0;
 
@@ -204,10 +183,10 @@ void Robot::armMovePeriodic() {
           armPivot.setMotorPower(pivot_power);
      }
 
-     if(controller.GetLeftBumper() && !controller.GetRightBumper() /*&& armExtension.getEncoderPosition() > 0.1*/) {
-          armExtension.setMotorPower(-0.1);
-     }else if(!controller.GetLeftBumper() && controller.GetRightBumper()/* && armExtension.getEncoderPosition() < 0.4*/) {
-          armExtension.setMotorPower(0.1);
+     if(controller.GetLeftBumper() && !controller.GetRightBumper()) {
+          armExtension.setMotorPower(-0.2);
+     }else if(!controller.GetLeftBumper() && controller.GetRightBumper()) {
+          armExtension.setMotorPower(0.2);
      }else {
           armExtension.setMotorPower(0);  
      }
@@ -287,12 +266,7 @@ void Robot::AutonomousInit() {
      std::cout << "Autonomous Init Complete!" << std::endl;
 }
 
-void Robot::AutonomousPeriodic() {
-     if(set_start) {
-          set_start = false;
-          start = std::chrono::system_clock::now();
-     }
-
+void Robot::middleDropAutonomous() {
      double ms_since_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
 
      //close servos AROUND CUBE (500 ms)
@@ -304,14 +278,14 @@ void Robot::AutonomousPeriodic() {
           return;
      }
 
-     //pivot arm down (2000 ms)
-     if(ms_since_start < 2500) {
+     //pivot arm down (1500 ms)
+     if(ms_since_start < 2000) {
           armPivot.setMotorPower(-0.2);
           armExtension.setMotorPower(0);
           return;
      }
 
-     //extend arm out (1000 ms)
+     //extend arm out (1500 ms)
      if(ms_since_start < 3500) {
           armExtension.setMotorPower(0.2);
           armPivot.setMotorPower(0);
@@ -327,14 +301,14 @@ void Robot::AutonomousPeriodic() {
           return;
      }    
 
-     //contract arm back in (1000 ms)
-     if(ms_since_start < 5000) {
+     //contract arm back in (1500 ms)
+     if(ms_since_start < 5500) {
           armExtension.setMotorPower(-0.2);
           armPivot.setMotorPower(0);
           return;
      }
 
-     //pivot arm up (2000 ms)
+     //pivot arm up (1500 ms)
      if(ms_since_start < 7000) {
           armPivot.setMotorPower(0.2);
           armExtension.setMotorPower(0);
@@ -343,10 +317,10 @@ void Robot::AutonomousPeriodic() {
 
      //move out of community (2000 ms)
      if(ms_since_start < 9000) {
-          frontLeft.setMotorPower(0.45);
-          frontRight.setMotorPower(0.45);
-          backLeft.setMotorPower(0.45);
-          backRight.setMotorPower(0.45);
+          frontLeft.setMotorPower(0.5);
+          frontRight.setMotorPower(0.5);
+          backLeft.setMotorPower(0.5);
+          backRight.setMotorPower(0.5);
           armExtension.setMotorPower(0);
           armPivot.setMotorPower(0);
           return;
@@ -358,6 +332,84 @@ void Robot::AutonomousPeriodic() {
      backRight.setMotorPower(0);
      armExtension.setMotorPower(0);
      armPivot.setMotorPower(0);
+}
+
+void Robot::lowDropAutonomous() {
+     double ms_since_start = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start).count();
+
+     //close servos AROUND CUBE (500 ms)
+     if(ms_since_start < 500) {
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          armServo1.SetPosition(0.5);
+          armServo2.SetPosition(0.5);
+          return;
+     }
+
+     //pivot arm down (4500 ms)
+     if(ms_since_start < 5000) {
+          armPivot.setMotorPower(-0.2);
+          armExtension.setMotorPower(0);
+          return;
+     }
+
+     //open servos (500 ms)
+     if(ms_since_start < 5500) {
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          armServo1.SetPosition(1);
+          armServo2.SetPosition(1);
+          return;
+     }    
+
+     //pivot arm up (4500 ms)
+     if(ms_since_start < 10000) {
+          armPivot.setMotorPower(0.2);
+          armExtension.setMotorPower(0);
+          return;
+     }
+
+     //move out of community (2000 ms)
+     if(ms_since_start < 12000) {
+          frontLeft.setMotorPower(0.5);
+          frontRight.setMotorPower(0.5);
+          backLeft.setMotorPower(0.5);
+          backRight.setMotorPower(0.5);
+          armExtension.setMotorPower(0);
+          armPivot.setMotorPower(0);
+          return;
+     } 
+
+     frontLeft.setMotorPower(0);
+     frontRight.setMotorPower(0);
+     backLeft.setMotorPower(0);
+     backRight.setMotorPower(0);
+     armExtension.setMotorPower(0);
+     armPivot.setMotorPower(0);
+}
+
+void Robot::AutonomousPeriodic() {
+     if(set_start) {
+          set_start = false;
+          start = std::chrono::system_clock::now();
+     }
+
+     if(AUTO_DROP == "HIGH") {
+          //todo: create a drop function to get the cube in the highest bucket
+          return;
+     }
+
+     if(AUTO_DROP == "MIDDLE") {
+          middleDropAutonomous();
+          return;
+     }
+
+     if(AUTO_DROP == "LOW") {
+          lowDropAutonomous();
+          return;
+     }
+
+     //do nothing
 }
 
 void Robot::AutonomousExit() {
